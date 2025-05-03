@@ -1,0 +1,489 @@
+# Swiftheart-succinct-memory-flip-game
+Swiftheart-succinct-memory-flip-game
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Succinct Memory Flip Game</title>
+  <style>
+    :root {
+      --pink: #ff007f;
+      --light-bg: #ffe6f0;
+      --light-panel: white;
+      --dark-bg: #222;
+      --dark-panel: #333;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--light-bg);
+      display: flex;
+      flex-direction: column;
+      color: var(--pink);
+      transition: background 0.3s, color 0.3s;
+    }
+
+    body.dark-mode {
+      background: var(--dark-bg);
+      color: var(--light-bg);
+    }
+
+    .container {
+      padding-top: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    #game-settings {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    select, button {
+      padding: 10px 14px;
+      border: 2px solid var(--pink);
+      background: var(--light-panel);
+      border-radius: 8px;
+      color: var(--pink);
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    body.dark-mode select,
+    body.dark-mode button {
+      background: var(--dark-panel);
+      color: var(--light-bg);
+      border-color: var(--light-bg);
+    }
+
+    button:hover, select:hover {
+      background: var(--light-bg);
+      transform: scale(1.1);
+    }
+
+    button:active {
+      transform: scale(0.95);
+    }
+
+    #timer, #moves {
+      margin: 5px;
+      font-weight: bold;
+    }
+
+    #main-content {
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 10px;
+      flex-wrap: wrap;
+      display: none;
+    }
+
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(4, 80px);
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .card {
+      width: 80px;
+      height: 80px;
+      border: 2px solid var(--pink);
+      border-radius: 10px;
+      background-color: white;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s;
+      perspective: 600px;
+    }
+
+    .card:hover {
+      box-shadow: 0 0 10px var(--pink);
+      transform: scale(1.05);
+    }
+
+    .card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .card.flipped img {
+      display: block;
+      animation: flipIn 0.4s;
+    }
+
+    @keyframes flipIn {
+      from { transform: rotateY(90deg); opacity: 0; }
+      to { transform: rotateY(0); opacity: 1; }
+    }
+
+    .card.matched {
+      background-color: #d9fdd3;
+      cursor: default;
+    }
+
+    .modal {
+      position: relative;
+      top: 0;
+      margin-top: 10px;
+      background: white;
+      border: 2px solid var(--pink);
+      border-radius: 10px;
+      padding: 20px;
+      z-index: 5;
+      box-shadow: 0 0 15px #ffb6d6;
+      width: 320px;
+    }
+
+    .info-modal {
+      background: var(--light-panel);
+      border: 2px solid var(--pink);
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 14px;
+      width: 280px;
+      max-width: 90vw;
+      height: 110px;
+      overflow-y: auto;
+      box-shadow: 0 0 15px #ffb6d6;
+      line-height: 1.4;
+      white-space: pre-line;
+      flex-shrink: 0;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .dark-mode .info-modal {
+      background: var(--dark-panel);
+      color: var(--light-bg);
+    }
+
+    #close-modal {
+      background: var(--pink);
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      float: right;
+    }
+
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+
+    .info-modal h3 {
+      margin-top: 0;
+    }
+
+    .info-modal p {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+
+    .pulsate {
+      animation: pulsate 1s ease-in-out infinite;
+    }
+
+    @keyframes pulsate {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+
+    .step {
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeInStep 0.5s forwards;
+    }
+
+    @keyframes fadeInStep {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 768px) {
+      #main-content {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      #grid {
+        grid-template-columns: repeat(4, 60px);
+      }
+
+      .card {
+        width: 60px;
+        height: 60px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Succinct Memory Flip Game</h1>
+    <div id="game-settings">
+      <select id="difficulty">
+        <option value="easy">Let's Pruv It (Easy)</option>
+        <option value="normal">Proof Verified (Normal)</option>
+        <option value="hard">Pruv Ur Luv (Difficult)</option>
+      </select>
+      <button id="start-btn" class="pulsate">▶ Start</button>
+      <button id="reset-btn">🔄 Reset</button>
+      <button id="sound-toggle">🔊 Sound</button>
+      <button id="theme-toggle">🌓 Theme</button>
+    </div>
+
+    <div style="display: flex; gap: 2rem; margin-top: 10px;">
+      <div id="timer">Time Left: 00:00</div>
+      <div id="moves">Moves: 0</div>
+    </div>
+
+    <div class="modal" id="intro-modal">
+      <p><strong>Welcome to Succinct Memory Flip Game!</strong></p>
+      <p>This game demonstrates how the Succinct ZK prover works by pairing and verifying elements. Click ▶ Start to begin!</p>
+      <button id="close-modal">Got it</button>
+    </div>
+
+    <div id="main-content">
+      <div id="grid"></div>
+      <div class="info-modal" id="educational-modal">
+        <h3>How The Prover Network Works</h3>
+        <div id="current-step" class="step"></div>
+      </div>
+    </div>
+  </div>
+  <canvas id="confetti"></canvas>
+
+  <!-- Background Music -->
+  <audio id="bg-music" loop>
+    <source src="9.mp3" type="audio/mpeg" />
+    Your browser does not support the audio element.
+  </audio>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <script>
+    const cardImages = [
+      '1.png',
+      '2.png',
+      '3.png',
+      '4.png',
+      '5.png',
+      '6.png',
+      '7.png',
+      '8.png'
+    ];
+
+    const steps = [
+      '1. User submits a transaction to the network.',
+      '2. Prover picks up and processes the transaction.',
+      '3. Cryptographic proof is generated.',
+      '4. Proof is verified by the verifier node.',
+      '5. Transaction is confirmed on-chain.',
+      '6. System records the result and updates state.'
+    ];
+
+    const grid = document.getElementById('grid');
+    const timerDisplay = document.getElementById('timer');
+    const movesDisplay = document.getElementById('moves');
+    const startBtn = document.getElementById('start-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const themeToggle = document.getElementById('theme-toggle');
+    const soundToggle = document.getElementById('sound-toggle');
+    const modal = document.getElementById('intro-modal');
+    const closeModal = document.getElementById('close-modal');
+    const difficultySelect = document.getElementById('difficulty');
+    const currentStepDisplay = document.getElementById('current-step');
+    const bgMusic = document.getElementById('bg-music');
+
+    let flippedCards = [], matched = 0, timeLeft = 0, timer, moves = 0;
+    let playing = false, soundOn = true;
+
+    function updateTimer() {
+      const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+      const s = (timeLeft % 60).toString().padStart(2, '0');
+      timerDisplay.textContent = `Time Left: ${m}:${s}`;
+    }
+
+    function toggleGame() {
+      if (!playing && timeLeft > 0) {
+        resumeGame();
+      } else if (!playing) {
+        startNewGame();
+      } else {
+        pauseGame();
+      }
+    }
+
+    function startNewGame() {
+      const level = difficultySelect.value;
+      timeLeft = level === 'easy' ? 60 : level === 'normal' ? 45 : 30;
+      flippedCards = [];
+      matched = 0;
+      moves = 0;
+      grid.innerHTML = '';
+      movesDisplay.textContent = `Moves: ${moves}`;
+      updateTimer();
+
+      createCards();
+      startStepLoop();
+      resumeGame();
+
+      modal.style.display = 'none';
+      document.getElementById('main-content').style.display = 'flex';
+    }
+
+    function resumeGame() {
+      playing = true;
+      startBtn.textContent = 'Pause';
+      startBtn.classList.remove('pulsate');
+      timer = setInterval(() => {
+        timeLeft--;
+        updateTimer();
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          alert("Time's up!");
+          playing = false;
+          startBtn.textContent = '▶ Start';
+          startBtn.classList.add('pulsate');
+        }
+      }, 1000);
+
+      if (soundOn) {
+        bgMusic.play();
+      }
+    }
+
+    function pauseGame() {
+      clearInterval(timer);
+      playing = false;
+      startBtn.textContent = '▶ Resume';
+      startBtn.classList.add('pulsate');
+      bgMusic.pause();
+    }
+
+    function resetGame() {
+      clearInterval(timer);
+      playing = false;
+      flippedCards = [];
+      matched = 0;
+      timeLeft = 0;
+      moves = 0;
+      grid.innerHTML = '';
+      movesDisplay.textContent = `Moves: ${moves}`;
+      updateTimer();
+      modal.style.display = 'block';
+      document.getElementById('main-content').style.display = 'none';
+      startBtn.textContent = '▶ Start';
+      startBtn.classList.add('pulsate');
+      bgMusic.pause();
+      bgMusic.currentTime = 0;
+    }
+
+    function createCards() {
+      const shuffledImages = [...cardImages, ...cardImages].sort(() => 0.5 - Math.random());
+      shuffledImages.forEach(image => {
+        const card = document.createElement('div');
+        card.classList.add('card');
+        const img = document.createElement('img');
+        img.src = image;
+        card.appendChild(img);
+        card.addEventListener('click', () => {
+          if (!playing) return;
+          flipCard(card);
+        });
+        grid.appendChild(card);
+      });
+    }
+
+    function flipCard(card) {
+      if (flippedCards.length < 2 && !card.classList.contains('flipped') && !card.classList.contains('matched')) {
+        card.classList.add('flipped');
+        flippedCards.push(card);
+        if (flippedCards.length === 2) {
+          moves++;
+          movesDisplay.textContent = `Moves: ${moves}`;
+          setTimeout(checkMatch, 1000);
+        }
+      }
+    }
+
+    function checkMatch() {
+      const [card1, card2] = flippedCards;
+      if (card1.querySelector('img').src === card2.querySelector('img').src) {
+        card1.classList.add('matched');
+        card2.classList.add('matched');
+        matched++;
+        if (matched === cardImages.length) {
+          clearInterval(timer);
+          bgMusic.pause();
+          alert('You Win!');
+        }
+      } else {
+        card1.classList.remove('flipped');
+        card2.classList.remove('flipped');
+      }
+      flippedCards = [];
+    }
+
+    function toggleSound() {
+      soundOn = !soundOn;
+      soundToggle.textContent = soundOn ? '🔊 Sound' : '🔇 Mute';
+      if (!soundOn) {
+        bgMusic.pause();
+      } else if (playing) {
+        bgMusic.play();
+      }
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('dark-mode');
+    }
+
+    closeModal.addEventListener('click', () => modal.style.display = 'none');
+    startBtn.addEventListener('click', toggleGame);
+    resetBtn.addEventListener('click', resetGame);
+    soundToggle.addEventListener('click', toggleSound);
+    themeToggle.addEventListener('click', toggleTheme);
+    difficultySelect.addEventListener('change', resetGame);
+
+    let stepIndex = 0;
+    function startStepLoop() {
+      setInterval(() => {
+        currentStepDisplay.classList.remove('step');
+        currentStepDisplay.offsetWidth;
+        currentStepDisplay.classList.add('step');
+        currentStepDisplay.textContent = steps[stepIndex];
+        stepIndex = (stepIndex + 1) % steps.length;
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
